@@ -11,7 +11,7 @@ CLOSE_THRESH = 30
 PURSUIT_SHOT_DIST = 50
 
 
-class NormAttack():
+class NormAttack:
     """
     Norm Attack Finite State Machine
     """
