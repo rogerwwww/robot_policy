@@ -36,11 +36,12 @@ class PathPlanning:
     # Algorithm dictionary
     algorithms = {'naive': naive}
 
-    def run(self, cur_pos, step, strategy='naive'):
+    def run(self, cur_pos, step, weight_map, strategy='naive'):
         """
         Run the path planning once
         :param cur_pos: input current position
         :param step: input step length
+        :param weight_map: input weight map for path planning
         :param strategy: input destination position
         :return: a movement in two directions
         """

@@ -32,6 +32,37 @@ class NormAttack:
         # Target enemy robot ID
         self.target_id = 0
 
+    def get_weight_map(self, enemy_weight=np.Inf, friend_weight=30):
+        """
+        Generate a weight map representing weights in the whole map.
+        :param enemy_weight: weight for enemy vehicle
+        :param friend_weight: weight for friend vehicle
+        :return: numpy array of (800 * 500)
+        """
+        wmap = np.ones((800, 500), dtype=np.float32)
+
+        # Draw environment obstacles
+        wmap[120:200, 100:130] = np.Inf
+        wmap[600:680, 370:400] = np.Inf
+        wmap[0:80, 250:280] = np.Inf
+        wmap[720:800, 220:250] = np.Inf
+        wmap[180:210, 230:350] = np.Inf
+        wmap[590:620, 150:270] = np.Inf
+        wmap[310:340, 300:500] = np.Inf
+        wmap[460:490, 0:200] = np.Inf
+
+        # Draw enemy robots' position
+        if self.enemy_sighted:
+            if self.enemy_position[0, 0:2].any():
+                wmap[self.enemy_position[0, 0] - 25: 50, self.enemy_position[0, 1] - 25: 50] = enemy_weight
+            if self.enemy_position[1, 0:2].any():
+                wmap[self.enemy_position[1, 0] - 25: 50, self.enemy_position[1, 1] - 25: 50] = enemy_weight
+
+        # Draw friend robot's position
+        wmap[self.self_position[1 - self.self_id, 0] - 25: 50,
+             self.self_position[1 - self.self_id, 1] - 25: 50] = friend_weight
+        return wmap
+
     def run(self, self_info, enemy_info):
         """
         Run the norm attack state machine once.
@@ -170,7 +201,8 @@ class NormAttack:
                             f(self.self_position[self.self_id][1], 500) * -200 + 250])
             self.path_planner.update_dst(dst)
 
-        act = self.path_planner.run(self.self_position[self.self_id], STEP_LEN)
+        weight_map = self.get_weight_map()
+        act = self.path_planner.run(self.self_position[self.self_id], STEP_LEN, weight_map)
         return act
 
     def pursuit_action(self, init=False):
@@ -188,7 +220,8 @@ class NormAttack:
         if init:
             self.path_planner = PathPlanning(self.self_position[self.self_id], self.enemy_position[self.target_id])
         self.path_planner.update_dst(self.enemy_position[self.target_id])
-        act = self.path_planner.run(self.self_position[self.self_id], STEP_LEN)
+        weight_map = self.get_weight_map()
+        act = self.path_planner.run(self.self_position[self.self_id], STEP_LEN, weight_map)
         if np.fmin(dist0, dist1) < PURSUIT_SHOT_DIST:
             act[-1] = 1
         return act
