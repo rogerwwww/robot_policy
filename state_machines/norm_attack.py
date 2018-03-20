@@ -39,24 +39,26 @@ class NormAttack:
         :param friend_weight: weight for friend vehicle
         :return: numpy array of (800 * 500)
         """
-        wmap = np.ones((800, 500), dtype=np.float32)
+        wmap = np.ones((500, 800), dtype=np.float32)
 
         # Draw environment obstacles
-        wmap[120:200, 100:130] = np.Inf
-        wmap[600:680, 370:400] = np.Inf
-        wmap[0:80, 250:280] = np.Inf
-        wmap[720:800, 220:250] = np.Inf
-        wmap[180:210, 230:350] = np.Inf
-        wmap[590:620, 150:270] = np.Inf
-        wmap[310:340, 300:500] = np.Inf
-        wmap[460:490, 0:200] = np.Inf
+        wmap[100:130, 120:200] = np.Inf
+        wmap[370:400, 600:680] = np.Inf
+        wmap[250:280, 0:80] = np.Inf
+        wmap[220:250, 720:800] = np.Inf
+        wmap[230:350, 180:210] = np.Inf
+        wmap[150:270, 590:620] = np.Inf
+        wmap[300:500, 310:340] = np.Inf
+        wmap[0:200, 460:490] = np.Inf
 
         # Draw enemy robots' position
         if self.enemy_sighted:
             if self.enemy_position[0, 0:2].any():
-                wmap[self.enemy_position[0, 0] - 25: 50, self.enemy_position[0, 1] - 25: 50] = enemy_weight
+                wmap[self.enemy_position[0, 0] - 25: self.enemy_position[0, 0] + 25,
+                     self.enemy_position[0, 1] - 25: self.enemy_position[0, 1] + 25] = enemy_weight
             if self.enemy_position[1, 0:2].any():
-                wmap[self.enemy_position[1, 0] - 25: 50, self.enemy_position[1, 1] - 25: 50] = enemy_weight
+                wmap[self.enemy_position[1, 0] - 25: self.enemy_position[1, 0] + 25,
+                     self.enemy_position[1, 1] - 25: self.enemy_position[1, 1] + 25] = enemy_weight
 
         # Draw friend robot's position
         wmap[self.self_position[1 - self.self_id, 0] - 25: 50,
@@ -202,7 +204,7 @@ class NormAttack:
             self.path_planner.update_dst(dst)
 
         weight_map = self.get_weight_map()
-        act = self.path_planner.run(self.self_position[self.self_id], STEP_LEN, weight_map)
+        act = self.path_planner.run(self.self_position[self.self_id], STEP_LEN, weight_map, strategy='a-star')
         return act
 
     def pursuit_action(self, init=False):
@@ -221,7 +223,7 @@ class NormAttack:
             self.path_planner = PathPlanning(self.self_position[self.self_id], self.enemy_position[self.target_id])
         self.path_planner.update_dst(self.enemy_position[self.target_id])
         weight_map = self.get_weight_map()
-        act = self.path_planner.run(self.self_position[self.self_id], STEP_LEN, weight_map)
+        act = self.path_planner.run(self.self_position[self.self_id], STEP_LEN, weight_map, strategy='a-star')
         if np.fmin(dist0, dist1) < PURSUIT_SHOT_DIST:
             act[-1] = 1
         return act
