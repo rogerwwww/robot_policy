@@ -5,7 +5,7 @@ import pygame
 import pdb
 scale = 0.1
 robot_size = [int(500*scale), int(500*scale)]
-act_dict = [-3, -2, -1, 0, 1, 2, 3]
+act_dict = [-12, -8, -4, -2, -1, 0, 1, 2, 4, 8, 12]
 d_size = [_/2 for _ in robot_size]
 
 def _sign(x):
@@ -211,31 +211,31 @@ def _get_reward(state):
         state['reward'] += -10.
     return state
 
-def get_reward(info_1, info_2, act_1, act_2, raw_map_img, policy='MAX'):
+def get_reward(flag, info_1, info_2, act_1, act_2, raw_map_img, policy='MAX'):
     # init
     state_1, state_2 = get_state(info_1, info_2, act_1, act_2, raw_map_img, policy=policy)
-    reward_1 = np.zeros([2,15])
-    reward_2 = np.zeros([2,15])
+    reward_1 = np.zeros([2,2 * flag.mov_num + 1])
+    reward_2 = np.zeros([2,2 * flag.mov_num + 1])
 
     # reward
     state_1 = [_get_reward(state_1[0]), _get_reward(state_1[1])]
     state_2 = [_get_reward(state_2[0]), _get_reward(state_2[1])]
 
     reward_1[0,act_1[0][0]] = state_1[0]['reward']
-    reward_1[0,act_1[0][1]+7] = state_1[0]['reward']
+    reward_1[0,act_1[0][1]+flag.mov_num] = state_1[0]['reward']
     if state_1[0]['hit']:
         reward_1[0,-1] = state_1[0]['reward']
     reward_1[1,act_1[0][0]] = state_1[1]['reward']
-    reward_1[1,act_1[0][1]+7] = state_1[1]['reward']
+    reward_1[1,act_1[0][1]+flag.mov_num] = state_1[1]['reward']
     if state_1[1]['hit']:
         reward_1[1,-1] = state_1[1]['reward']
 
     reward_2[0,act_2[0][0]] = state_2[0]['reward']
-    reward_2[0,act_2[0][1]+7] = state_2[0]['reward']
+    reward_2[0,act_2[0][1]+flag.mov_num] = state_2[0]['reward']
     if state_2[0]['hit']:
         reward_2[0,-1] = state_2[0]['reward']
     reward_2[1,act_2[0][0]] = state_2[1]['reward']
-    reward_2[1,act_2[0][1]+7] = state_2[1]['reward']
+    reward_2[1,act_2[0][1]+flag.mov_num] = state_2[1]['reward']
     if state_2[1]['hit']:
         reward_2[1,-1] = state_2[1]['reward']
 
@@ -281,7 +281,7 @@ def environ(flag, info_1, info_2, act_1_p, act_2_p, raw_map_img, policy='MAX'):
     map_img = draw_pos(info_1, info_2, raw_map_img)
 
     # state and reward
-    state_1, state_2, reward_1, reward_2 = get_reward(info_1, info_2, act_1, act_2, raw_map_img, policy=policy)
+    state_1, state_2, reward_1, reward_2 = get_reward(flag, info_1, info_2, act_1, act_2, raw_map_img, policy=policy)
     #pdb.set_trace()
 
     print('\nstate:')

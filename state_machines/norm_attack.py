@@ -1,10 +1,11 @@
 from state_machines.path_planning import PathPlanning
 import numpy as np
+from PIL import Image
 
 # Arrive at ROI threshold
 ROI_THRESH = 5
 # Single step length
-STEP_LEN = 5
+STEP_LEN = 14
 # Distance when close to target enough
 CLOSE_THRESH = 30
 # When closer than this distance, will shot when pursuit
@@ -32,37 +33,44 @@ class NormAttack:
         # Target enemy robot ID
         self.target_id = 0
 
-    def get_weight_map(self, enemy_weight=np.Inf, friend_weight=30):
+    def get_weight_map(self, obstacle_weight=(0, 0, 0), enemy_weight=(0, 255, 0), friend_weight=(255, 0, 0)):
         """
         Generate a weight map representing weights in the whole map.
+        :param obstacle_weight: weight for obstacles
         :param enemy_weight: weight for enemy vehicle
         :param friend_weight: weight for friend vehicle
         :return: numpy array of (800 * 500)
         """
-        wmap = np.ones((500, 800), dtype=np.float32)
+        wmap = 255 * np.ones((500, 800, 3), dtype=np.uint8)
 
         # Draw environment obstacles
-        wmap[100:130, 120:200] = np.Inf
-        wmap[370:400, 600:680] = np.Inf
-        wmap[250:280, 0:80] = np.Inf
-        wmap[220:250, 720:800] = np.Inf
-        wmap[230:350, 180:210] = np.Inf
-        wmap[150:270, 590:620] = np.Inf
-        wmap[300:500, 310:340] = np.Inf
-        wmap[0:200, 460:490] = np.Inf
+        wmap[100:130, 120:200] = obstacle_weight
+        wmap[370:400, 600:680] = obstacle_weight
+        wmap[250:280, 0:80] = obstacle_weight
+        wmap[220:250, 720:800] = obstacle_weight
+        wmap[230:350, 180:210] = obstacle_weight
+        wmap[150:270, 590:620] = obstacle_weight
+        wmap[300:500, 310:340] = obstacle_weight
+        wmap[0:200, 460:490] = obstacle_weight
+
+        wmap = wmap.transpose((1, 0, 2))
 
         # Draw enemy robots' position
         if self.enemy_sighted:
             if self.enemy_position[0, 0:2].any():
                 wmap[self.enemy_position[0, 0] - 25: self.enemy_position[0, 0] + 25,
-                     self.enemy_position[0, 1] - 25: self.enemy_position[0, 1] + 25] = enemy_weight
+                     self.enemy_position[0, 1] - 25: self.enemy_position[0, 1] + 25,
+                     :] = enemy_weight
             if self.enemy_position[1, 0:2].any():
                 wmap[self.enemy_position[1, 0] - 25: self.enemy_position[1, 0] + 25,
-                     self.enemy_position[1, 1] - 25: self.enemy_position[1, 1] + 25] = enemy_weight
+                     self.enemy_position[1, 1] - 25: self.enemy_position[1, 1] + 25,
+                     :] = enemy_weight
 
         # Draw friend robot's position
-        wmap[self.self_position[1 - self.self_id, 0] - 25: 50,
-             self.self_position[1 - self.self_id, 1] - 25: 50] = friend_weight
+        wmap[self.self_position[1 - self.self_id, 0] - 25: self.self_position[1 - self.self_id, 0] + 25,
+             self.self_position[1 - self.self_id, 1] - 25: self.self_position[1 - self.self_id, 1] + 25,
+             :] = friend_weight
+        # Image.fromarray(wmap.transpose((1, 0, 2))).show()
         return wmap
 
     def run(self, self_info, enemy_info):

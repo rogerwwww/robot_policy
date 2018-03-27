@@ -1,17 +1,25 @@
 import numpy as np
+import time
+import pdb
+import random
 
 scale = 0.1
-robot_size = [int(500*scale), int(500*scale)]
-d_size = [_//2 for _ in robot_size]
+robot_size = [int(500 * scale), int(500 * scale)]
+d_size = [_ // 2 for _ in robot_size]
+
+rescale = 0.1
+d_size = [int(_ * rescale) for _ in d_size]
+act_dict = [-12, -8, -4, -2, -1, 0, 1, 2, 4, 8, 12]
 
 
 class PathPlanning:
     """
     Path Planning Method class
     """
+
     def __init__(self, cur_pos, dst_pos):
         self.cur_pos = cur_pos
-        self.dst_pos = dst_pos
+        self.dst_pos = dst_pos  # pdb.set_trace()
 
     def update_dst(self, update_pos):
         """
@@ -42,17 +50,15 @@ class PathPlanning:
         """
         Judge corners' position whether illegal
         """
-        h,w = weight_map.shape
-        pos_tmp = (pos[0]+dir_tmp[0], pos[1]+dir_tmp[1])
-        corners = [[pos_tmp[0]+d_size[0], pos_tmp[1]+d_size[1]],
-                   [pos_tmp[0]+d_size[0], pos_tmp[1]-d_size[1]],
-                   [pos_tmp[0]-d_size[0], pos_tmp[1]+d_size[1]],
-                   [pos_tmp[0]-d_size[0], pos_tmp[1]-d_size[1]]]
+        h, w = weight_map.shape
+        pos_tmp = (pos[0] + dir_tmp[0], pos[1] + dir_tmp[1])
+        corners = [[pos_tmp[0] + d_size[0], pos_tmp[1] + d_size[1]], [pos_tmp[0] + d_size[0], pos_tmp[1] - d_size[1]],
+                   [pos_tmp[0] - d_size[0], pos_tmp[1] + d_size[1]], [pos_tmp[0] - d_size[0], pos_tmp[1] - d_size[1]]]
         for corner in corners:
-            if corner[0] < 0 or corner[0] >= w or corner[1] < 0 or corner[1] >= h:
+            if corner[0] < 0 or corner[0] >= h or corner[1] < 0 or corner[1] >= w:
                 return False
-        if sum(sum(weight_map[pos_tmp[0]-d_size[0]:pos_tmp[0]+d_size[0], pos_tmp[1]-d_size[1]:pos_tmp[1]+d_size[1]])) \
-                < 3 * 255 * 4 * d_size[0] * d_size[1]:
+        if sum(sum(weight_map[pos_tmp[0] - d_size[0]:pos_tmp[0] + d_size[0],
+                   pos_tmp[1] - d_size[1]:pos_tmp[1] + d_size[1]])) < 3 * 255 * 4 * d_size[0] * d_size[1]:
             return False
         return True
 
@@ -61,16 +67,16 @@ class PathPlanning:
         get children and update its father and distance
         """
         threshold = 3 * 255
-        dir_10 = [(1,0), (-1,0), (0,1), (0,-1)]
-        dir_14 = [(1,1), (-1,1), (1,-1), (-1,-1)]
+        dir_10 = [(1, 0), (-1, 0), (0, 1), (0, -1)]
+        dir_14 = [(1, 1), (-1, 1), (1, -1), (-1, -1)]
 
-        h,w = weight_map.shape
+        h, w = weight_map.shape
         pos_children = []
         # up,down,left,right
         for dir_tmp in dir_10:
             if not self.is_pos(pos, dir_tmp, weight_map):
                 continue
-            pos_tmp = (pos[0]+dir_tmp[0], pos[1]+dir_tmp[1])
+            pos_tmp = (pos[0] + dir_tmp[0], pos[1] + dir_tmp[1])
             if weight_map[pos_tmp] >= threshold and map_dist[pos_tmp] < 0:
                 map_father[pos_tmp] = pos
                 map_dist[pos_tmp] = map_dist[pos] + 10
@@ -80,34 +86,58 @@ class PathPlanning:
         for dir_tmp in dir_14:
             if not self.is_pos(pos, dir_tmp, weight_map):
                 continue
-            pos_tmp = (pos[0]+dir_tmp[0], pos[1]+dir_tmp[1])
+            pos_tmp = (pos[0] + dir_tmp[0], pos[1] + dir_tmp[1])
             if weight_map[pos_tmp] >= threshold and map_dist[pos_tmp] < 0:
                 map_father[pos_tmp] = pos
                 map_dist[pos_tmp] = map_dist[pos] + 14
                 pos_children.append(pos_tmp)
         return pos_children
 
+    def reshapeMap(self, weight_map):
+        """
+        resize map
+        """
+        while len(weight_map.shape) > 2:
+            weight_map = np.sum(weight_map, -1)
+
+        rescale = 0.1
+
+        new_weight_map = weight_map[::int(1 / rescale), ::int(1 / rescale)]
+
+        return new_weight_map
+
     def a_star(self, step, weight_map):
         """
         simple A-star
         """
-        cur_pos = tuple(self.cur_pos[::-1])
-        dst_pos = tuple(self.dst_pos[::-1])
-        while len(weight_map.shape) > 2:
-            weight_map = np.sum(weight_map, -1)
-        h,w = weight_map.shape
+        # cur_pos_init = tuple(self.cur_pos[::-1])
+        # dst_pos_init = tuple(self.dst_pos[::-1])
+        cur_pos_init = tuple(self.cur_pos)
+        dst_pos_init = tuple(self.dst_pos)
+        weight_map_init = weight_map
+
+        # resize
+        weight_map = self.reshapeMap(weight_map_init)
+        h, w = weight_map.shape
+        cur_pos = [int(rescale * _) for _ in cur_pos_init]
+        dst_pos = [int(rescale * _) for _ in dst_pos_init]
+
+        cur_pos = tuple(cur_pos)
+        dst_pos = tuple(dst_pos)
 
         # init
-        map_father = -1 * np.ones((h,w,2), np.int16)
-        map_dist   = -1 * np.ones((h,w), np.int16)
+        map_father = -1 * np.ones((h, w, 2), np.int16)
+        map_dist = -1 * np.ones((h, w), np.int16)
         pos_tbd = [cur_pos]
 
         # map
         map_father[cur_pos] = cur_pos
         map_dist[cur_pos] = 0
         not_end = True
+        pos_did = []
         while len(pos_tbd) > 0 and not_end:
             pos = pos_tbd.pop(0)
+            pos_did.append(pos)
             # get child
             pos_children = self.get_children(pos, weight_map, map_father, map_dist)
             if len(pos_children) > 0:
@@ -118,21 +148,53 @@ class PathPlanning:
 
         # get way
         way = []
-        pos_father = dst_pos
+
+        # change dst to ground
+        pos_father = ori_pos_father = dst_pos
+        dist = 2
+        pos_father_list = []
+        while True:
+            try:
+                if map_father[pos_father][0] != -1:
+                    break
+            except IndexError:
+                pass
+            if len(pos_father_list) == 0:
+                dist += 1
+                for _ in [(dist, dist), (dist, -dist), (-dist, dist), (-dist, -dist)]:
+                    pos_father_list.append(tuple(np.array(ori_pos_father) + _))
+            pos_father = pos_father_list.pop()
+
         while pos_father[0] != cur_pos[0] or pos_father[1] != cur_pos[1]:
-            way.append(pos_father)
+            way.append(tuple([int(_ / rescale) for _ in pos_father]))
             # get father
             pos_father = tuple(map_father[pos_father])
-        way.append(cur_pos)
-        way.reverse()
+            if pos_father[0] < 0:
+                pdb.set_trace()
+        way.append(tuple([int(_ / rescale) for _ in cur_pos]))
+        try:
+            if np.linalg.norm(abs(np.array(dst_pos_init) - np.array(way[1])), ord=np.inf) > np.linalg.norm(
+                    abs(np.array(way[0]) - np.array(way[1])), ord=np.inf):
+                way = [dst_pos_init] + way
+            else:
+                way[0] = dst_pos_init
+            if np.linalg.norm(abs(np.array(cur_pos_init) - np.array(way[-2])), ord=np.inf) > np.linalg.norm(
+                    abs(np.array(way[-1]) - np.array(way[-2])), ord=np.inf):
+                way.append(cur_pos_init)
+            else:
+                way[-1] = cur_pos_init
+            way.reverse()
+        except IndexError:
+            pass
+        # print way
 
-        next_pos = cur_pos
+        next_pos = cur_pos_init
         for pos in way:
             np_pos = np.array(pos)
-            if np.linalg.norm(np_pos - cur_pos) > step:
+            if np.linalg.norm(np_pos - cur_pos_init, ord=np.inf) > step:
                 break
             next_pos = pos
-        return np.array(np.array(next_pos) - cur_pos)
+        return np.array(np.array(next_pos) - cur_pos_init)
 
     # Algorithm dictionary
     algorithms = {'naive': naive, 'a-star': a_star}
@@ -147,16 +209,15 @@ class PathPlanning:
         :return: a movement in two directions
         """
         self.cur_pos = cur_pos
+
         act = self.algorithms[strategy](self, step, weight_map)
         act = np.array(np.round(act), dtype=int)
+
+        ret_act = np.zeros(len(act_dict) * 2 + 1, dtype=int)
         for i, a in enumerate(act):
-            if a < -3:
-                act[i] = -3
-            elif a > 3:
-                act[i] = 3
-        ret_act = np.zeros(15, dtype=int)
-        ret_act[act[0] + 3] = 1
-        ret_act[act[1] + 3 + 7] = 1
+            idx = np.argmin(abs(np.array(act_dict) - a))
+            act[i] = act_dict[idx]
+            ret_act[idx + i * len(act_dict)] = 1
 
         return ret_act
 
@@ -165,15 +226,19 @@ class PathPlanning:
 
 if __name__ == '__main__':
     cur_pos = np.array([30, 30])
-    dst_pos = np.array([90, 40])
+    dst_pos = np.array([470, 640])
     pp = PathPlanning(cur_pos, dst_pos)
 
-    weight_map = 255 * np.ones((500,800,3), np.int16)
+    weight_map = 255 * np.ones((500, 800, 3), np.int16)
     for i in range(70):
         weight_map[60, i] = (0, 0, 0)
 
-    while (cur_pos != dst_pos).any():
-        dp = pp.run(cur_pos, 3, weight_map, strategy='a-star')
-        dp = np.argmax(dp[0:7]) - 3, np.argmax(dp[7:14]) - 3
+    while np.linalg.norm(abs(cur_pos - dst_pos), ord=np.inf) > 14:
+        # while (cur_pos != dst_pos).any():
+        # dp = pp.run(cur_pos, 3, weight_map, strategy='a-star')
+        # dp = np.argmax(dp[0:7]) - 3, np.argmax(dp[7:14]) - 3
+        t = time.time()
+        dp = pp.run(cur_pos, 14, weight_map, strategy='a-star')
+        dp = 4 * (np.argmax(dp[0:7]) - 3), 4 * (np.argmax(dp[7:14]) - 3)
         cur_pos += dp
-        print('cur pos', cur_pos)
+        print('cur pos', cur_pos, 'to', dst_pos, 'time', time.time() - t)
