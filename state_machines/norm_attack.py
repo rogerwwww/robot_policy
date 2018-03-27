@@ -241,7 +241,11 @@ class NormAttack:
         Command dps action for robot.
         :return: action array of this robot
         """
-        return [0,0,0,1,0,0,0,0,0,0,1,0,0,0,1]
+        ret_array = np.zeros(11 * 2 + 1)
+        ret_array[-1] = 1
+        ret_array[11 // 2] = 1
+        ret_array[11 // 2 + 11] = 1
+        return ret_array
 
     @property
     def self_position(self):

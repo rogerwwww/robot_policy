@@ -1,7 +1,6 @@
 import numpy as np
 import time
 import pdb
-import random
 
 scale = 0.1
 robot_size = [int(500 * scale), int(500 * scale)]
@@ -20,6 +19,7 @@ class PathPlanning:
     def __init__(self, cur_pos, dst_pos):
         self.cur_pos = cur_pos
         self.dst_pos = dst_pos  # pdb.set_trace()
+        self.way = None
 
     def update_dst(self, update_pos):
         """
@@ -186,6 +186,8 @@ class PathPlanning:
             way.reverse()
         except IndexError:
             pass
+
+        self.way = way
         # print way
 
         next_pos = cur_pos_init
