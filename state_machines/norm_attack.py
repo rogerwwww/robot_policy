@@ -222,9 +222,15 @@ class NormAttack:
         :return: action array of this robot
         """
         # Update target
-        dist0 = np.linalg.norm(self.enemy_position[0] - self.self_position[self.self_id])
-        dist1 = np.linalg.norm(self.enemy_position[1] - self.self_position[self.self_id])
-        self.target_id = np.argmin([dist0, dist1])
+        try:
+            dist0 = np.linalg.norm(self.enemy_position[0] - self.self_position[self.self_id])
+            dist1 = np.linalg.norm(self.enemy_position[1] - self.self_position[self.self_id])
+            self.target_id = np.argmin([dist0, dist1])
+        except TypeError:
+            if self.enemy_position[0] is None:
+                self.target_id = 1
+            else:
+                self.target_id = 0
 
         # Pursuit target
         if init:
