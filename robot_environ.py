@@ -81,11 +81,11 @@ def move(pos_pre, dir, map_img):
         dir[1] = _sign(dir[1]) * (abs(dir[1]) -1)
 
     # bar
-    print('move to:', [pos_pre[0]+_sign(dir[0])*(abs(dir[0])+d_size[0]), pos_pre[1]+_sign(dir[1])*(abs(dir[1])+d_size[1])],)
+    #print('move to:', [pos_pre[0]+_sign(dir[0])*(abs(dir[0])+d_size[0]), pos_pre[1]+_sign(dir[1])*(abs(dir[1])+d_size[1])],)
 
-    print(sum(map_img[int(pos_pre[0]+_sign(dir[0])*(abs(dir[0])+d_size[0])), int(pos_pre[1])]),
-		sum(map_img[int(pos_pre[0]), int(pos_pre[1]+_sign(dir[1])*(abs(dir[1])+d_size[1]))]))
-    print('dir',dir,)
+    #print(sum(map_img[int(pos_pre[0]+_sign(dir[0])*(abs(dir[0])+d_size[0])), int(pos_pre[1])]),
+	#	sum(map_img[int(pos_pre[0]), int(pos_pre[1]+_sign(dir[1])*(abs(dir[1])+d_size[1]))]))
+    #print('dir',dir,)
     while not _move_tool(pos_pre, [dir[0], 0], map_img):
         if dir[0]==0:
             break
@@ -107,7 +107,7 @@ def move(pos_pre, dir, map_img):
             break
         dir[1] = _sign(dir[1]) * (abs(dir[1]) -1)
     '''
-    print('dir_new',dir)
+    #print('dir_new',dir)
     return dir
 
 def shoot(pos, target, state_1, state_2, map_img):
@@ -260,9 +260,9 @@ def environ(flag, info_1, info_2, act_1_p, act_2_p, raw_map_img, policy='MAX'):
     # info[2,4]: [x,y,blood,buff]
     # act[2,15]:  [3,2,1,0,-1,-2,-3,3,2,1,0,-1,-2,-3,shoot]
 
-    print('info:')
-    print(info_1)
-    print(info_2)
+    #print('info:')
+    #print(info_1)
+    #print(info_2)
 
     act_1 = []
     act_1.append([np.argmax(act_1_p[0,:flag.mov_num]), np.argmax(act_1_p[0,flag.mov_num:2*flag.mov_num]), int(act_1_p[0,-1]>0.5)])
@@ -284,9 +284,9 @@ def environ(flag, info_1, info_2, act_1_p, act_2_p, raw_map_img, policy='MAX'):
     state_1, state_2, reward_1, reward_2 = get_reward(flag, info_1, info_2, act_1, act_2, raw_map_img, policy=policy)
     #pdb.set_trace()
 
-    print('\nstate:')
-    print(state_1)
-    print(state_2)
+    #print('\nstate:')
+    #print(state_1)
+    #print(state_2)
     '''
 
     print '\nreward:'

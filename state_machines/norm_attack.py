@@ -130,7 +130,7 @@ class NormAttack:
         elif next_state == 'dps':
             act = self.dps_action()
         else:
-            act = self.pursuit_action(init=True)
+            act = self.pursuit_action()
 
         # Perform state transition
         self.last_state = self.cur_state
@@ -152,7 +152,7 @@ class NormAttack:
 
         # Action
         if next_state == 'patrol':
-            act = self.patrol_action(init=True)
+            act = self.patrol_action()
         elif next_state == 'dps':
             act = self.dps_action()
         else:
@@ -178,11 +178,11 @@ class NormAttack:
 
         # Action
         if next_state == 'patrol':
-            act = self.patrol_action(init=True)
+            act = self.patrol_action()
         elif next_state == 'dps':
             act = self.dps_action()
         else:
-            act = self.pursuit_action(init=True)
+            act = self.pursuit_action()
 
         # Perform state transition
         self.last_state = self.cur_state

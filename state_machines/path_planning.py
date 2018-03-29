@@ -4,8 +4,9 @@ import time
 import math
 import matplotlib.pyplot as plt
 import pdb
+from multiprocessing import Process, Queue
 
-DEBUG = True
+DEBUG = False
 
 scale = 0.1
 robot_size = [int(600 * scale), int(600 * scale)]
@@ -25,6 +26,10 @@ class PathPlanning:
         self.cur_pos = cur_pos
         self.dst_pos = dst_pos
         self.way = None
+        self.process = None
+        self.q_get = Queue()
+        self.q_feed = Queue()
+        self.cur_way_index = 0
 
     def update_dst(self, update_pos):
         """
@@ -42,14 +47,17 @@ class PathPlanning:
         """
         return self.dst_pos
 
-    def naive(self, step, weight_map):
+    def naive(self, step, weight_map=None, dst=None):
         """
         Naive path planning method. It takes a straight line towards the destination.
         :param step: step length
-        :parma weight_map: input weight map (no effect in naive)
+        :param weight_map: input weight map (no effect here)
+        :param dst: custom destination (None to use self.dst_pos)
         :return: a movement in two directions
         """
-        return (self.dst_pos - self.cur_pos) / np.linalg.norm(self.dst_pos - self.cur_pos) * step
+        if dst is None:
+            dst = self.dst_pos
+        return (dst - self.cur_pos) / np.linalg.norm(dst - self.cur_pos) * step
 
     def is_pos(self, pos, dir_tmp, weight_map):
         """
@@ -105,13 +113,15 @@ class PathPlanning:
 
         return new_weight_map
 
-    def a_star(self, step, weight_map):
+    def _a_star(self, cur_pos_init, dst_pos_init, weight_map_init):
         """
-        simple A-star
+
+        :param cur_pos_init:
+        :param dst_pos_init:
+        :param weight_map_init:
+        :return:
         """
-        cur_pos_init = tuple(self.cur_pos)
-        dst_pos_init = tuple(self.dst_pos)
-        weight_map_init = weight_map
+        print('# In a-star', cur_pos_init, dst_pos_init)
 
         # resize
         weight_map = self.reshapeMap(weight_map_init)
@@ -134,7 +144,7 @@ class PathPlanning:
         map_dist[cur_pos] = 0
         not_end = True
         pos_did = []
-        i=0
+        i = 0
         while len(pos_tbd) > 0 and not_end:
             idx = pos_gph.index(min(pos_gph))
             pos = pos_tbd.pop(idx)
@@ -142,7 +152,8 @@ class PathPlanning:
             pos_father = pos_fathers.pop(idx)
             pos_did.append(pos)
             # get child
-            pos_children, pos_fathers_tmp, pos_gph_tmp = self.get_children(pos, pos_father, dst_pos, pos_tbd, pos_did, weight_map, map_father, map_dist)
+            pos_children, pos_fathers_tmp, pos_gph_tmp = self.get_children(pos, pos_father, dst_pos, pos_tbd, pos_did,
+                                                                           weight_map, map_father, map_dist)
             if len(pos_children) > 0:
                 i += 1
                 pos_tbd += pos_children
@@ -152,7 +163,8 @@ class PathPlanning:
                     if pos_tmp[0] == dst_pos[0] and pos_tmp[1] == dst_pos[1]:
                         not_end = False
             if i % 20 == 0 and DEBUG:
-                plt.imshow(map_dist);plt.show()
+                plt.imshow(map_dist);
+                plt.show()
 
         # get way
         way = []
@@ -169,7 +181,8 @@ class PathPlanning:
                 pass
             if len(pos_father_list) == 0:
                 dist += 1
-                for _ in [(dist, dist), (dist, -dist), (-dist, dist), (-dist, -dist)]:
+                for _ in [(dist, dist), (dist, -dist), (-dist, dist), (-dist, -dist),
+                          (dist, 0), (0, dist), (-dist, 0), (0, -dist)]:
                     pos_father_list.append(tuple(np.array(ori_pos_father) + _))
             pos_father = pos_father_list.pop()
 
@@ -195,15 +208,55 @@ class PathPlanning:
         except IndexError:
             pass
 
-        self.way = way
-        # print way
+        return way
+
+    def a_star_process(self):
+        while True:
+            cur_pos, dst_pos, weight_map = self.q_feed.get(True)
+            print('## In process caller', cur_pos, dst_pos)
+            way = self._a_star(cur_pos, dst_pos, weight_map)
+            self.q_get.put(way)
+
+    def a_star(self, step, weight_map):
+        """
+        simple A-star interface
+        """
+        cur_pos_init = tuple(self.cur_pos)
+        dst_pos_init = tuple(self.dst_pos)
+
+        #self.way = self._a_star(cur_pos_init, dst_pos_init, weight_map)
+        if self.way is None or not self.q_get.empty():
+            self.way = self.q_get.get(self.way is None)
+            self.q_feed.put((cur_pos_init, dst_pos_init, weight_map))
+
+        dist_to_way = np.linalg.norm(np.array(self.way) - self.cur_pos, axis=-1)
+        self.cur_way_index = np.argmin(dist_to_way)
+
+        # If the current position is away from way
+        if dist_to_way[self.cur_way_index] > step:
+            try:
+                local_dst = self.way[self.cur_way_index + 3]
+            except IndexError:
+                local_dst = self.cur_way_index
+            return self.naive(step, dst=local_dst)
+
+        print('**', self.way)
+        print('**', self.way[self.cur_way_index])
 
         next_pos = cur_pos_init
-        for pos in way:
+        while True:
+            if len(self.way) == 0:
+                break
+            try:
+                pos = self.way[self.cur_way_index]
+            except IndexError:
+                break
             np_pos = np.array(pos)
             if np.linalg.norm(np_pos - cur_pos_init, ord=np.inf) > step:
                 break
+            self.cur_way_index += 1
             next_pos = pos
+        print('** returned ', np.array(np.array(next_pos) - cur_pos_init))
         return np.array(np.array(next_pos) - cur_pos_init)
 
     # Algorithm dictionary
@@ -220,6 +273,16 @@ class PathPlanning:
         """
         self.cur_pos = cur_pos
 
+        if self.process is None and strategy == 'a-star':
+            #self.q_get = Queue()
+            #self.q_feed = Queue()
+            self.process = Process(target=self.a_star_process)
+            self.process.start()
+            self.q_feed.put((tuple(self.cur_pos), tuple(self.dst_pos), weight_map))
+
+        print('*', self.cur_pos)
+        print('*', self.dst_pos)
+
         act = self.algorithms[strategy](self, step, weight_map)
         act = np.array(np.round(act), dtype=int)
 
@@ -230,10 +293,13 @@ class PathPlanning:
             ret_act[idx + i * len(act_dict)] = 1
         return ret_act
 
+
     # TODO: Try maybe Dijkstra
 
 
 if __name__ == '__main__':
+    import os
+
     cur_pos = np.array([30, 30])
     dst_pos = np.array([120, 30])
     pp = PathPlanning(cur_pos, dst_pos)
@@ -249,3 +315,6 @@ if __name__ == '__main__':
         dp = act_dict[np.argmax(dp[0: dict_len])], act_dict[np.argmax(dp[dict_len: 2 * dict_len])]
         cur_pos += dp
         print('cur pos {} to {}, time {:.2f}'.format(cur_pos, dst_pos, time.time() - t))
+        time.sleep(1)
+    print('STOP!')
+    os._exit(0)
