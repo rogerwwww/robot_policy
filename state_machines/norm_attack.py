@@ -1,15 +1,14 @@
-from state_machines.path_planning import PathPlanning
+from state_machines.path_planning import PathPlanning, robot_size
 import numpy as np
-from PIL import Image
 
 # Arrive at ROI threshold
-ROI_THRESH = 5
+ROI_THRESH = 20
 # Single step length
 STEP_LEN = 14
 # Distance when close to target enough
-CLOSE_THRESH = 30
+CLOSE_THRESH = 80
 # When closer than this distance, will shot when pursuit
-PURSUIT_SHOT_DIST = 50
+PURSUIT_SHOT_DIST = 200
 
 
 class NormAttack:
@@ -55,22 +54,18 @@ class NormAttack:
 
         wmap = wmap.transpose((1, 0, 2))
 
+        dx, dy = (_ // 2 for _ in robot_size)
+
         # Draw enemy robots' position
         if self.enemy_sighted:
-            if self.enemy_position[0, 0:2].any():
-                wmap[self.enemy_position[0, 0] - 25: self.enemy_position[0, 0] + 25,
-                     self.enemy_position[0, 1] - 25: self.enemy_position[0, 1] + 25,
-                     :] = enemy_weight
-            if self.enemy_position[1, 0:2].any():
-                wmap[self.enemy_position[1, 0] - 25: self.enemy_position[1, 0] + 25,
-                     self.enemy_position[1, 1] - 25: self.enemy_position[1, 1] + 25,
-                     :] = enemy_weight
+            if self.enemy_position[1 - self.target_id, 0:2].any():
+                enemy_x, enemy_y= self.enemy_position[1 - self.target_id, 0], self.enemy_position[1 - self.target_id, 1]
+                wmap[enemy_x - dx: enemy_x + dx, enemy_y - dy: enemy_y + dy, :] = enemy_weight
 
         # Draw friend robot's position
-        wmap[self.self_position[1 - self.self_id, 0] - 25: self.self_position[1 - self.self_id, 0] + 25,
-             self.self_position[1 - self.self_id, 1] - 25: self.self_position[1 - self.self_id, 1] + 25,
+        wmap[self.self_position[1 - self.self_id, 0] - dx: self.self_position[1 - self.self_id, 0] + dx,
+             self.self_position[1 - self.self_id, 1] - dy: self.self_position[1 - self.self_id, 1] + dy,
              :] = friend_weight
-        # Image.fromarray(wmap.transpose((1, 0, 2))).show()
         return wmap
 
     def run(self, self_info, enemy_info):
